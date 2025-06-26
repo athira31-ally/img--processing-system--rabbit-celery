@@ -40,9 +40,12 @@ Replace with your real AWS credentials:
 AWS_ACCESS_KEY_ID=AKIA...your_key_here
 AWS_SECRET_ACCESS_KEY=...your_secret_here
 AWS_DEFAULT_REGION=ap-south-1
+CELERY_BROKER_URL=sqs://https://sqs.ap-south-1.amazonaws.com/534211282949/image-processor-queue
+CELERY_RESULT_BACKEND=s3://image-processor-bucket-534211282949/celery-results/
+
 S3_BUCKET_NAME=your-image-processing-bucket-1750868832
 ```
-
+cd ..
 ### Step 3: Start the Application
 ```bash
 docker-compose up --build
