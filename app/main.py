@@ -7,11 +7,28 @@ from celery import Celery
 
 app = FastAPI(title="Image Processing API")
 
-# Celery configuration
+# Celery configuration with SQS
 celery_app = Celery(
     "worker",
-    broker="redis://redis:6379/0",
-    backend="redis://redis:6379/0"
+    broker=os.getenv("CELERY_BROKER_URL", "sqs://"),
+    backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/")
+)
+
+# Configure Celery for SQS
+celery_app.conf.update(
+    broker_url=os.getenv("CELERY_BROKER_URL", "sqs://"),
+    result_backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/"),
+    broker_connection_retry_on_startup=True,
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+    broker_transport_options={
+        'region': os.getenv("AWS_DEFAULT_REGION", "ap-south-1"),
+        'visibility_timeout': 3600,
+        'polling_interval': 1,
+    }
 )
 
 @app.get("/")
@@ -69,7 +86,7 @@ def get_task_status(task_id: str):
     else:
         return {
             "task_id": task_id,
-            "status": "PROCESSING",
+            "status": "PROCESSING", 
             "message": "Image is being processed"
         }
 
