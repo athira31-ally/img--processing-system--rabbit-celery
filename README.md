@@ -70,7 +70,7 @@ aws configure ( enter access key,secret key ,region)
 # 1. Login to ECR
  ```aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 534211282949.dkr.ecr.ap-south-1.amazonaws.com```
 
-# 2. Build for AMD64 platform (critical for Fargate compatibility)
+# 2. Build for AMD64 platform 
 ```docker build --platform linux/amd64 -t 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-api:latest .
 docker build --platform linux/amd64 -f Dockerfile.worker -t 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-worker:latest .```
 
