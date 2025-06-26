@@ -1,0 +1,29 @@
+{
+  "family": "image-processor-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::534211282949:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::534211282949:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-worker:latest",
+      "environment": [
+        {
+          "name": "AWS_DEFAULT_REGION",
+          "value": "ap-south-1"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/image-processor-worker",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
