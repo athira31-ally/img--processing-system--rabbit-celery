@@ -2,14 +2,33 @@ from celery import Celery
 from PIL import Image
 import os
 
+# Celery configuration with SQS
 app = Celery(
     "worker",
-    broker="redis://redis:6379/0",
-    backend="redis://redis:6379/0"
+    broker=os.getenv("CELERY_BROKER_URL", "sqs://"),
+    backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/")
+)
+
+# Configure Celery for SQS
+app.conf.update(
+    broker_url=os.getenv("CELERY_BROKER_URL", "sqs://"),
+    result_backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/"),
+    broker_connection_retry_on_startup=True,
+    task_serializer='json',
+    accept_content=['json'],
+    result_serializer='json',
+    timezone='UTC',
+    enable_utc=True,
+    broker_transport_options={
+        'region': os.getenv("AWS_DEFAULT_REGION", "ap-south-1"),
+        'visibility_timeout': 3600,
+        'polling_interval': 1,
+    }
 )
 
 @app.task
 def process_image(task_id: str, file_path: str):
+    """Process image: resize and compress"""
     try:
         with Image.open(file_path) as img:
             if img.mode != "RGB":
