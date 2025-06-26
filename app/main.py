@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import os
@@ -7,17 +8,11 @@ from celery import Celery
 
 app = FastAPI(title="Image Processing API")
 
-# Celery configuration with SQS
-celery_app = Celery(
-    "worker",
-    broker=os.getenv("CELERY_BROKER_URL", "sqs://"),
-    backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/")
-)
-
-# Configure Celery for SQS
+# Configure Celery for Fargate deployment
+celery_app = Celery("worker")
 celery_app.conf.update(
     broker_url=os.getenv("CELERY_BROKER_URL", "sqs://"),
-    result_backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/"),
+    result_backend=os.getenv("CELERY_RESULT_BACKEND", "s3://your-image-processing-bucket-1750868832"),
     broker_connection_retry_on_startup=True,
     task_serializer='json',
     accept_content=['json'],
@@ -25,9 +20,19 @@ celery_app.conf.update(
     timezone='UTC',
     enable_utc=True,
     broker_transport_options={
-        'region': os.getenv("AWS_DEFAULT_REGION", "ap-south-1"),
+        'region': os.getenv('AWS_DEFAULT_REGION', 'ap-south-1'),
         'visibility_timeout': 3600,
         'polling_interval': 1,
+    },
+    # S3 backend configuration
+    s3_bucket=os.getenv('S3_BUCKET_NAME', 'your-image-processing-bucket-1750868832'),
+    s3_key_prefix='celery-results/',
+    s3_endpoint_url=None,
+    s3_retry_policy={
+        'max_retries': 3,
+        'interval_start': 0,
+        'interval_step': 0.2,
+        'interval_max': 0.2,
     }
 )
 
@@ -63,9 +68,16 @@ async def upload_image(file: UploadFile = File(...)):
 @app.get("/status/{task_id}")
 def get_task_status(task_id: str):
     result_file = f"processed/{task_id}_processed.jpg"
-    original_file = f"uploads/{task_id}_original.jpeg"
     
-    if os.path.exists(result_file):
+    # Check multiple possible original file extensions
+    original_file = None
+    for ext in ['jpeg', 'jpg', 'png']:
+        potential_file = f"uploads/{task_id}_original.{ext}"
+        if os.path.exists(potential_file):
+            original_file = potential_file
+            break
+    
+    if os.path.exists(result_file) and original_file:
         original_size = os.path.getsize(original_file) / (1024 * 1024)
         processed_size = os.path.getsize(result_file) / (1024 * 1024)
         compression_ratio = ((original_size - processed_size) / original_size) * 100
