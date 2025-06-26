@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 import os
@@ -24,7 +23,6 @@ celery_app.conf.update(
         'visibility_timeout': 3600,
         'polling_interval': 1,
     },
-    # S3 backend configuration
     s3_bucket=os.getenv('S3_BUCKET_NAME', 'your-image-processing-bucket-1750868832'),
     s3_key_prefix='celery-results/',
     s3_endpoint_url=None,
@@ -52,8 +50,9 @@ async def upload_image(file: UploadFile = File(...)):
     with open(original_filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
+    # Use correct task name that matches worker registration
     celery_task = celery_app.send_task(
-        "worker.process_image",
+        "app.worker.process_image",
         args=[task_id, original_filename]
     )
     
@@ -115,5 +114,5 @@ def download_file(file_id: str):
 
 @app.post("/test")
 def test_worker():
-    task = celery_app.send_task("worker.test_task")
+    task = celery_app.send_task("app.worker.test_task")
     return {"message": "Test task sent", "task_id": task.id}
