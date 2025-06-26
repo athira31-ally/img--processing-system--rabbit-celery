@@ -2,7 +2,7 @@
 Image processing API with FastAPI and Celery
 
 # Image Processing Service
-A image processing service built with FastAPI and Celery, deployed on AWS using ECS Fargate, SQS, and S3.
+An image processing service built with FastAPI and Celery, deployed on AWS using ECS Fargate, SQS, and S3.
 
 # Architecture flow
        
@@ -24,117 +24,69 @@ A image processing service built with FastAPI and Celery, deployed on AWS using 
 -  Containerised with Docker, deployed on AWS ECS Fargate
 
 
-1. **Clone the repository**
-   
-   ```bash
-   git clone https://github.com/athira31-ally/image-processing-service.git
-   cd image-processing-service
-   ```
-
-2. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your AWS credentials and configuration
-   ```
-
-3. **Run with Docker Compose**
-   ```bash
-   docker-compose up --build
-   ```
-
-5. **Access the API**
-   - API Documentation: http://localhost:8000/docs
-   - Health Check: http://localhost:8000/
-
-
-
-### Environment Variables
-
+### Step 1: Clone and Setup
 ```bash
-# AWS Configuration
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-AWS_DEFAULT_REGION=ap-south-1
-
-# S3 Configuration
-S3_BUCKET_NAME=your-image-processing-bucket-1750868832
-
-# SQS Configuration
-SQS_QUEUE_URL=https://sqs.ap-south-1.amazonaws.com/534211282949/celery-queue
-
-# Application Configuration
-API_PORT=8000
-WORKER_CONCURRENCY=4
+git clone https://github.com/athira31-ally/image-processing-system.git
+cd image-processing-system
+cp .env.example .env
 ```
 
-## 🌩️ AWS Deployment
+### Step 2: Adding Your AWS Keys to .env
+```bash
+nano .env
+```
+Replace with your real AWS credentials:
+```
+AWS_ACCESS_KEY_ID=AKIA...your_key_here
+AWS_SECRET_ACCESS_KEY=...your_secret_here
+AWS_DEFAULT_REGION=ap-south-1
+S3_BUCKET_NAME=your-image-processing-bucket-1750868832
+```
 
-### Prerequisites
-
-1. **AWS CLI configured**
-2. **ECR repositories created**
-3. **ECS cluster setup**
-4. **S3 bucket created**
-5. **SQS queue created**
-
-### Step-by-Step Deployment
-
-1. **Building and Push Docker Images**
-   ```bash
-   **# Build API image**
-   docker build -f docker/Dockerfile.api -t image-processor-api .
-   docker tag image-processor-api:latest 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-api:latest
-   docker push 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-api:latest
-
-   # Build Worker image
-   docker build -f docker/Dockerfile.worker -t image-processor-worker .
-   docker tag image-processor-worker:latest 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-worker:latest
-   docker push 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-worker:latest
-   ```
-
-2. **Creating ECS Task Definitions**
-   ```bash
-   aws ecs register-task-definition --cli-input-json file://aws/api-task-definition.json
-   aws ecs register-task-definition --cli-input-json file://aws/worker-task-definition.json
-   ```
-
-3. **Creating ECS Services**
-   ```bash
-   # Create API service
-   aws ecs create-service \
-     --cluster your-cluster-name \
-     --service-name image-processor-api \
-     --task-definition image-processor-api \
-     --desired-count 2 \
-     --launch-type FARGATE \
-     --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
-
-   # Create Worker service
-   aws ecs create-service \
-     --cluster your-cluster-name \
-     --service-name image-processor-worker \
-     --task-definition image-processor-worker \
-     --desired-count 2 \
-     --launch-type FARGATE \
-     --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx]}"
-   ```
-
-### Local Setup
-
-1. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Run API locally**
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-
-3. **Run Worker locally**
-   ```bash
-   celery -A app.worker.app worker --loglevel=info
-   ```
+### Step 3: Start the Application
+```bash
+docker-compose up --build
+```
 
 
+### Step 4: Test It Works
+```bash
+# Test API
+curl http://localhost:8000/
+
+# Upload an image
+curl -o test.jpg "https://picsum.photos/800/600"
+curl -X POST "http://localhost:8000/upload-image/" -F "file=@test.jpg"
+
+# Check processing status (replace task_id with actual ID from response to know the status)
+curl "http://localhost:8000/status/YOUR_TASK_ID"
+```
+**##Deployment**
+
+
+aws configure ( enter access key,secret key ,region)
+
+
+# 1. Login to ECR
+ ```aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 534211282949.dkr.ecr.ap-south-1.amazonaws.com```
+
+# 2. Build for AMD64 platform (critical for Fargate compatibility)
+```docker build --platform linux/amd64 -t 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-api:latest .
+docker build --platform linux/amd64 -f Dockerfile.worker -t 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-worker:latest .```
+
+# **3. Push images
+```docker push 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-api:latest
+docker push 534211282949.dkr.ecr.ap-south-1.amazonaws.com/image-processor-worker:latest```
+
+# 4. Update ECS services (triggers deployment)
+```aws ecs update-service --cluster image-processor-cluster --service api-service --force-new-deployment
+aws ecs update-service --cluster image-processor-cluster --service worker-service --force-new-deployment```
+
+# 5. Monitor deployment
+```aws ecs describe-services --cluster image-processor-cluster --services api-service worker-service --query 'services[*].[serviceName,runningCount,desiredCount]' --output table```
+
+
+Live Demo: http://image-processor-alb-1146437516.ap-south-1.elb.amazonaws.com
+# Upload image
+curl -X POST "http://image-processor-alb-1146437516.ap-south-1.elb.amazonaws.com/upload" -F "file=@test-image.jpg"
 
