@@ -1,6 +1,7 @@
 fastapi==0.104.1
 uvicorn==0.24.0
 celery==5.3.4
-redis==5.0.1
 pillow==10.1.0
 python-multipart==0.0.6
+boto3==1.26.0
+kombu[sqs]==5.3.2
