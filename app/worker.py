@@ -2,17 +2,12 @@ from celery import Celery
 from PIL import Image
 import os
 
-# Celery configuration with SQS
-app = Celery(
-    "worker",
-    broker=os.getenv("CELERY_BROKER_URL", "sqs://"),
-    backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/")
-)
+# Configure Celery for Fargate deployment
+app = Celery("worker")
 
-# Configure Celery for SQS
 app.conf.update(
     broker_url=os.getenv("CELERY_BROKER_URL", "sqs://"),
-    result_backend=os.getenv("CELERY_RESULT_BACKEND", "s3://image-processor-bucket/celery-results/"),
+    result_backend=os.getenv("CELERY_RESULT_BACKEND", "s3://your-image-processing-bucket-1750868832"),
     broker_connection_retry_on_startup=True,
     task_serializer='json',
     accept_content=['json'],
@@ -20,9 +15,19 @@ app.conf.update(
     timezone='UTC',
     enable_utc=True,
     broker_transport_options={
-        'region': os.getenv("AWS_DEFAULT_REGION", "ap-south-1"),
+        'region': os.getenv('AWS_DEFAULT_REGION', 'ap-south-1'),
         'visibility_timeout': 3600,
         'polling_interval': 1,
+    },
+    # S3 backend configuration
+    s3_bucket=os.getenv('S3_BUCKET_NAME', 'your-image-processing-bucket-1750868832'),
+    s3_key_prefix='celery-results/',
+    s3_endpoint_url=None,
+    s3_retry_policy={
+        'max_retries': 3,
+        'interval_start': 0,
+        'interval_step': 0.2,
+        'interval_max': 0.2,
     }
 )
 
