@@ -12,7 +12,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile. worker
+      dockerfile: Dockerfile.worker
     volumes:
       - ./uploads:/app/uploads
       - ./processed:/app/processed
