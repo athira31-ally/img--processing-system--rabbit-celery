@@ -6,10 +6,7 @@ services:
     startCommand: python main.py
     envVars:
       - key: CELERY_BROKER_URL
-        fromService:
-          type: pserv
-          name: rabbitmq
-          property: connectionString
+        value: pyamqp://admin:rabbitmqpass@rabbitmq:5672//
 
   - type: worker
     name: celery-worker
@@ -18,10 +15,7 @@ services:
     startCommand: celery -A celery_app worker --loglevel=info
     envVars:
       - key: CELERY_BROKER_URL
-        fromService:
-          type: pserv
-          name: rabbitmq
-          property: connectionString
+        value: pyamqp://admin:rabbitmqpass@rabbitmq:5672//
 
   - type: pserv
     name: rabbitmq
@@ -35,4 +29,4 @@ services:
       - key: RABBITMQ_DEFAULT_USER
         value: admin
       - key: RABBITMQ_DEFAULT_PASS
-        generateValue: true
+        value: rabbitmqpass
