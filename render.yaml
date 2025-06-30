@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: image-processor-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: connectionString
+
+  - type: worker
+    name: celery-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A celery_app worker --loglevel=info
+    envVars:
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: pserv
+          name: rabbitmq
+          property: connectionString
+
+  - type: pserv
+    name: rabbitmq
+    env: docker
+    dockerfilePath: ./Dockerfile.rabbitmq
+    disk:
+      name: rabbitmq-data
+      mountPath: /var/lib/rabbitmq
+      sizeGB: 1
+    envVars:
+      - key: RABBITMQ_DEFAULT_USER
+        value: admin
+      - key: RABBITMQ_DEFAULT_PASS
+        generateValue: true
